@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的云端日记 (LeanCloud版)</title>
-    <!-- 引入 LeanCloud SDK -->
-    <script src="//cdn.jsdelivr.net/npm/leancloud-storage@4.15.0/dist/av-min.js"></script>
+    <title>我的云端日记 (国内极速版)</title>
+    <!-- 引入 Bmob SDK (国内源，速度快) -->
+    <script src="https://unpkg.com/bmob.js-sdk-v2.2.0/dist/Bmob-2.2.0.min.js"></script>
     <style>
         /* 样式保持不变 */
-        :root { --primary-color: #6a11cb; --secondary-color: #2575fc; --bg-color: #f4f7f6; --card-bg: #ffffff; --text-color: #333; }
+        :root { --primary-color: #ff6b6b; --secondary-color: #5563DE; --bg-color: #f4f7f6; --card-bg: #ffffff; --text-color: #333; }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%); margin: 0; padding: 20px; min-height: 100vh; color: var(--text-color); }
         .container { max-width: 800px; margin: 0 auto; }
         header { text-align: center; color: white; margin-bottom: 30px; }
@@ -20,14 +20,14 @@
         button { border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; transition: transform 0.1s; }
         button:active { transform: scale(0.98); }
         .btn-img { background-color: #e0e0e0; color: #333; }
-        .btn-save { background-color: var(--primary-color); color: white; flex-grow: 1; }
+        .btn-save { background-color: var(--secondary-color); color: white; flex-grow: 1; }
         #fileInput { display: none; }
         .diary-list { display: flex; flex-direction: column; gap: 20px; }
         .diary-entry { background: var(--card-bg); border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); position: relative; animation: fadeIn 0.5s ease; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
         .diary-header { display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 15px; }
         .diary-date { color: #888; font-size: 0.9em; }
-        .diary-title { margin: 0; font-size: 1.2em; color: var(--primary-color); }
+        .diary-title { margin: 0; font-size: 1.2em; color: var(--secondary-color); }
         .btn-delete { background-color: #ff4d4d; color: white; padding: 5px 10px; font-size: 0.8em; }
     </style>
 </head>
@@ -35,8 +35,8 @@
 
 <div class="container">
     <header>
-        <h1>☁️ LeanCloud 云日记</h1>
-        <p>数据安全存储在云端，支持 GitHub Pages</p>
+        <h1>📖 我们的日记本</h1>
+        <p>无需加速器 · 国内直连</p>
     </header>
 
     <div class="editor-card">
@@ -47,7 +47,7 @@
             <input type="file" id="fileInput" accept="image/*" onchange="handleImageUpload(event)">
         </div>
         <div id="editor" contenteditable="true"></div>
-        <button class="btn-save" onclick="saveDiary()">🚀 发送到云端</button>
+        <button class="btn-save" onclick="saveDiary()">💾 保存到 Bmob</button>
     </div>
 
     <div id="diaryList" class="diary-list"></div>
@@ -55,18 +55,12 @@
 
 <script>
     // ——————————————————————————————————————————————————————————
-    // ★★★ 请在这里填入你在 LeanCloud 获取的三个参数 ★★★
+    // ★★★ 请在这里填入你在 Bmob 获取的两个参数 ★★★
     // ——————————————————————————————————————————————————————————
-    const APP_ID = "1F0HFXUhrSUtZXrW1GrG6hZ0-MdYXbMMI";
-    const APP_KEY = "pZnjP6aYHsowCqawkkJ5QHZT";
-    const SERVER_URL = "https://1f0hfxuh.api.lncldglobal.com";
-
-    // 初始化 LeanCloud
-    AV.init({
-        appId: APP_ID,
-        appKey: APP_KEY,
-        serverURL: SERVER_URL
-    });
+    
+    // 初始化 Bmob (把你的 Secret Key 和 API 安全码 填在下面)
+    // 注意：第一个参数是 Secret Key，第二个参数是 API 安全码
+    Bmob.initialize("b10c55bf8c2d800a", "6fbkq23ght69bsgf");
 
     // 页面加载时执行
     document.addEventListener('DOMContentLoaded', () => {
@@ -74,7 +68,7 @@
         loadDiaries();
     });
 
-    // 图片处理（转Base64）
+    // 图片处理
     function handleImageUpload(event) {
         const file = event.target.files[0];
         if (file) {
@@ -89,98 +83,82 @@
         }
     }
 
-    // 1. 保存日记到 LeanCloud
-    async function saveDiary() {
+    // 1. 保存日记到 Bmob
+    function saveDiary() {
         const title = document.getElementById('titleInput').value;
         const date = document.getElementById('dateInput').value;
         const content = document.getElementById('editor').innerHTML;
 
         if (!title || !content.trim()) { alert("写点东西再保存吧！"); return; }
 
-        // 创建一个 Diary 对象
-        const Diary = AV.Object.extend('Diary');
-        const diary = new Diary();
+        const query = Bmob.Query('Diary');
+        query.set("title", title);
+        query.set("date", date);
+        query.set("content", content);
+        
+        const btn = document.querySelector('.btn-save');
+        btn.innerText = '正在保存...';
+        btn.disabled = true;
 
-        // 设置数据
-        diary.set('title', title);
-        diary.set('date', date);
-        diary.set('content', content);
-
-        try {
-            const btn = document.querySelector('.btn-save');
-            btn.innerText = '正在上传...';
-            btn.disabled = true;
-
-            await diary.save(); // 保存到云端
-            
+        query.save().then(res => {
             alert("保存成功！");
             document.getElementById('titleInput').value = '';
             document.getElementById('editor').innerHTML = '';
-            loadDiaries(); // 重新加载
-        } catch (error) {
-            console.error(error);
-            alert("保存失败：" + error.message);
-        } finally {
-            const btn = document.querySelector('.btn-save');
-            btn.innerText = '🚀 发送到云端';
+            loadDiaries();
+            btn.innerText = '💾 保存到 Bmob';
             btn.disabled = false;
-        }
+        }).catch(err => {
+            console.log(err);
+            alert("保存失败：" + JSON.stringify(err));
+            btn.innerText = '💾 保存到 Bmob';
+            btn.disabled = false;
+        });
     }
 
-    // 2. 从 LeanCloud 加载日记
-    async function loadDiaries() {
+    // 2. 从 Bmob 加载日记
+    function loadDiaries() {
         const listContainer = document.getElementById('diaryList');
-        listContainer.innerHTML = '<p style="text-align:center;">正在从云端拉取...</p>';
+        listContainer.innerHTML = '<p style="text-align:center;">正在加载...</p>';
 
-        const query = new AV.Query('Diary');
-        query.descending('createdAt'); // 按创建时间倒序（最新的在上面）
+        const query = Bmob.Query("Diary");
+        query.order("-createdAt"); // 按创建时间倒序
 
-        try {
-            const results = await query.find();
-            
+        query.find().then(res => {
             listContainer.innerHTML = '';
-            if (results.length === 0) {
-                listContainer.innerHTML = '<p style="text-align:center; color:#888;">云端空空如也，快写第一篇吧！</p>';
+            if (res.length === 0) {
+                listContainer.innerHTML = '<p style="text-align:center; color:#888;">还没有日记，快去写一篇吧！</p>';
                 return;
             }
 
-            results.forEach(diary => {
-                // 获取数据
-                const id = diary.id;
-                const title = diary.get('title');
-                const date = diary.get('date');
-                const content = diary.get('content');
-
+            res.forEach(diary => {
                 const card = document.createElement('div');
                 card.className = 'diary-entry';
                 card.innerHTML = `
                     <div class="diary-header">
                         <div>
-                            <h3 class="diary-title">${title}</h3>
-                            <span class="diary-date">${date}</span>
+                            <h3 class="diary-title">${diary.title}</h3>
+                            <span class="diary-date">${diary.date}</span>
                         </div>
-                        <button class="btn-delete" onclick="deleteDiary('${id}')">删除</button>
+                        <button class="btn-delete" onclick="deleteDiary('${diary.objectId}')">删除</button>
                     </div>
-                    <div class="diary-content">${content}</div>
+                    <div class="diary-content">${diary.content}</div>
                 `;
                 listContainer.appendChild(card);
             });
-        } catch (error) {
+        }).catch(err => {
             listContainer.innerHTML = '<p style="text-align:center; color:red;">加载失败，请检查网络</p>';
-            console.error(error);
-        }
+        });
     }
 
     // 3. 删除日记
-    async function deleteDiary(objectId) {
-        if(confirm("确定要删除这条云端日记吗？")) {
-            try {
-                const diary = AV.Object.createWithoutData('Diary', objectId);
-                await diary.destroy();
+    function deleteDiary(objectId) {
+        if(confirm("确定要删除这条日记吗？")) {
+            const query = Bmob.Query('Diary');
+            query.destroy(objectId).then(res => {
                 loadDiaries();
-            } catch (error) {
+            }).catch(err => {
                 alert("删除失败");
-            }
+            });
         }
     }
 </script>
